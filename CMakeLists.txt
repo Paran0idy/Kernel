@@ -13,9 +13,15 @@ set(LIB_DIRS ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${INCLUDE_DIRS})
 
-option(sgemm "sgemm" ON)
+option(sgemm "Build sgemm executable" ON)
+option(softmax "Build softmax executable" ON)
 
 if (sgemm)
     add_executable(sgemm ${LIB_DIRS}/sgemm.cu)
     target_link_libraries(sgemm cublas)
+endif ()
+
+if (softmax)
+    add_executable(softmax ${LIB_DIRS}/softmax.cu)
+    target_link_libraries(softmax cublas)
 endif ()
