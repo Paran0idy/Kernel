@@ -15,6 +15,7 @@ include_directories(${INCLUDE_DIRS})
 
 option(sgemm "Build sgemm executable" ON)
 option(softmax "Build softmax executable" ON)
+option(sort "Build sort exectable" ON)
 
 if (sgemm)
     add_executable(sgemm ${LIB_DIRS}/sgemm.cu)
@@ -24,4 +25,9 @@ endif ()
 if (softmax)
     add_executable(softmax ${LIB_DIRS}/softmax.cu)
     target_link_libraries(softmax cublas)
+endif ()
+
+if (sort)
+    add_executable(sort ${LIB_DIRS}/sort.cu)
+    target_link_libraries(sort cublas)
 endif ()
