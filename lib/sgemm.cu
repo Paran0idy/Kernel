@@ -11,6 +11,67 @@ __global__ void naive_kernel(float *a, float *b, float *c, int M, int N, int K) 
     }
 }
 
+void naive(int M, int N, int K) {
+    const int BM = 32, BN = 32, BK = 32;
+
+    size_t size_a = M * K * sizeof(float);
+    size_t size_b = K * N * sizeof(float);
+    size_t size_c = M * N * sizeof(float);
+
+    float *a = (float *)malloc(size_a);
+    float *b = (float *)malloc(size_b);
+    float *c = (float *)malloc(size_c);
+
+    for (int i = 0; i < M * K; i++) a[i] = 1.0;
+    for (int i = 0; i < K * N; i++) b[i] = 1.0;
+
+    float *da, *db, *dc;
+    cudaMalloc(&da, size_a);
+    cudaMalloc(&db, size_b);
+    cudaMalloc(&dc, size_c);
+
+    cudaMemcpy(da, a, size_a, cudaMemcpyHostToDevice);
+    cudaMemcpy(db, b, size_b, cudaMemcpyHostToDevice);
+
+    dim3 block(N / BN, M / BM);
+    dim3 thread(BN, BM);
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
+    naive_kernel<<<block, thread>>>(da, db, dc, M, N, K);
+    cudaEventRecord(stop);
+
+    cudaMemcpy(c, dc, size_c, cudaMemcpyDeviceToHost);
+
+    // Calculate time and FLOPS
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    double flops = 2.0 * M * N * K / (milliseconds / 1000.0);
+
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++)
+            std::cout << c[OFFSET(i, j, N)] << " ";
+        std::cout << std::endl;
+    }
+
+    // Save to file
+    std::ofstream file;
+    file.open("../performance.txt", std::ios::app);
+    file << milliseconds << " " << flops << " " << "Naive" << std::endl;
+    file.close();
+
+    cudaFree(da);
+    cudaFree(db);
+    cudaFree(dc);
+    free(a);
+    free(b);
+    free(c);
+}
+
 #define OFFSET(i, j, N) (i) * (N) + (j)
 #define FLOAT4(pointer) reinterpret_cast<float4*> (&pointer)[0]
 __global__ void threadTiling_kernel(float *a, float *b ,float *c, int M, int N, int K) {
@@ -58,51 +119,8 @@ __global__ void threadTiling_kernel(float *a, float *b ,float *c, int M, int N, 
         for (int j = 0; j < TILE; j += 4)
             FLOAT4(c[OFFSET(ty + i, tx + j, N)]) = FLOAT4(result[i][j]);
 }
-void naive() {
-    const int M = 32, N = 32, K = 32;
-    const int BM = 32, BN = 32, BK = 32;
 
-    size_t size_a = M * K * sizeof(float);
-    size_t size_b = K * N * sizeof(float);
-    size_t size_c = M * N * sizeof(float);
-
-    float *a = (float *)malloc(size_a);
-    float *b = (float *)malloc(size_b);
-    float *c = (float *)malloc(size_c);
-
-    for (int i = 0; i < M * K; i++) a[i] = 1.0;
-    for (int i = 0; i < K * N; i++) b[i] = 1.0;
-
-    float *da, *db, *dc;
-    cudaMalloc(&da, size_a);
-    cudaMalloc(&db, size_b);
-    cudaMalloc(&dc, size_c);
-
-    cudaMemcpy(da, a, size_a, cudaMemcpyHostToDevice);
-    cudaMemcpy(db, b, size_b, cudaMemcpyHostToDevice);
-
-    dim3 block(N / BN, M / BM);
-    dim3 thread(BN, BM);
-    naive_kernel<<<block, thread>>>(da, db, dc, M, N, K);
-
-    cudaMemcpy(c, dc, size_c, cudaMemcpyDeviceToHost);
-
-    for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++)
-            std::cout << c[OFFSET(i, j, N)] << " ";
-        std::cout << std::endl;
-    }
-
-    cudaFree(da);
-    cudaFree(db);
-    cudaFree(dc);
-    free(a);
-    free(b);
-    free(c);
-}
-
-void threadTiling() {
-    const int M = 128, N = 128, K = 128;
+void threadTiling(int M, int N, int K) {
     const int BM = 128, BN = 128, BK = 8, TILE = 8;
 
     size_t size_a = M * K * sizeof(float);
@@ -126,15 +144,34 @@ void threadTiling() {
 
     dim3 block(N / BN, M / BM);
     dim3 thread(BN / TILE, BM / TILE);
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
     threadTiling_kernel<<<block, thread>>>(da, db, dc, M, N, K);
+    cudaEventRecord(stop);
 
     cudaMemcpy(c, dc, size_c, cudaMemcpyDeviceToHost);
+
+    // Calculate time and FLOPS
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    double flops = 2.0 * M * N * K / (milliseconds / 1000.0);
 
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++)
             std::cout << c[OFFSET(i, j, N)] << " ";
         std::cout << std::endl;
     }
+
+    // Save to file
+    std::ofstream file;
+    file.open("../performance.txt", std::ios::app);
+    file << milliseconds << " " << flops << " " << "ThreadTiling" << std::endl;
+    file.close();
 
     cudaFree(da);
     cudaFree(db);
@@ -144,13 +181,15 @@ void threadTiling() {
     free(c);
 }
 
-
-
-
-
 int main() {
-    naive();
-    threadTiling();
+    // Initialize CSV file with headers
+    std::ofstream file;
+    file.open("performance.csv");
+    file << "Kernel,Time(ms),FLOPS" << std::endl;
+    file.close();
+
+    naive(128, 128, 128);
+    threadTiling(128, 128, 128);
 
     return 0;
 }
