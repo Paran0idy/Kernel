@@ -2,17 +2,24 @@
 
 ## CUDA
 
-### GEMM
+### SGEMM
++ Naive
++ ThreadTiling
+
+
 ### GEMV
 ### Reduce
 ### Transpose
 ### Sort
++ MergeSort
 ### Softmax
++ Naive
++ WarpReduce
 
 
 ## Triton
 
-### GEMM
+### SGEMM
 ### GEMV
 ### Reduce
 ### Transpose
