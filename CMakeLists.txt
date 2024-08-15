@@ -24,10 +24,10 @@ endif ()
 
 if (softmax)
     add_executable(softmax ${LIB_DIRS}/softmax.cu)
-    target_link_libraries(softmax cublas)
+    target_link_libraries(softmax)
 endif ()
 
 if (sort)
     add_executable(sort ${LIB_DIRS}/sort.cu)
-    target_link_libraries(sort cublas)
+    target_link_libraries(sort)
 endif ()
