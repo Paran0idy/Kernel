@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include <iostream>
+#include <fstream>
 #include <chrono>
 
 const int warpSize = 32;
