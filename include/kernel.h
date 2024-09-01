@@ -5,6 +5,9 @@
 #include <chrono>
 
 const int warpSize = 32;
+const int sm_count = 30;
+const int tpm = 1536;
+const int kNumWaves = 32;
 
 class Timer {
 public:

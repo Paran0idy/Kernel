@@ -15,6 +15,7 @@ include_directories(${INCLUDE_DIRS})
 
 option(sgemm "Build sgemm executable" ON)
 option(softmax "Build softmax executable" ON)
+option(transpose "Build transpose executable" ON)
 
 if (sgemm)
     add_executable(sgemm ${LIB_DIRS}/sgemm.cu)
@@ -24,4 +25,9 @@ endif ()
 if (softmax)
     add_executable(softmax ${LIB_DIRS}/softmax.cu)
     target_link_libraries(softmax cublas)
+endif ()
+
+if (transpose)
+    add_executable(transpose ${LIB_DIRS}/transpose.cu)
+    target_link_libraries(transpose cublas)
 endif ()
