@@ -3,28 +3,45 @@
 ## CUDA
 
 ### SGEMM
-+ Naive
-+ ThreadTiling
+✅ Naive
+
+✅ Thread Tiling
+
+✅ Thread Tiling Bank Free
 
 ![SGEMM](./performance.png)
 
-### GEMV
+### SGEMV
+✅ Naive
+
+✅ Warp Reduce
+
 ### Reduce
+
 ### Transpose
+
 ### Sort
-+ MergeSort
+✅ MergeSort
+
 ### Softmax
-+ Naive
-+ WarpReduce
+✅ Naive
+
+✅ WarpReduce
 
 
 ## Triton
 
-### SGEMM
+### HGEMM
+✅ Block Tiling
+
 ### GEMV
+
 ### Reduce
+
 ### Transpose
+
 ### Sort
+
 ### Softmax
 
 
