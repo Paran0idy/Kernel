@@ -31,7 +31,7 @@ def matmul_kernel(
         a_offset += BLOCK_K * stride_ak
         b_offset += BLOCK_K * stride_bk
     
-    c_offset = c_ptr + (BLOCK_M * pid_m + tl.arange(0, BLOCK_M))[:, None] * stride_am + (BLOCK_N * pid_n + tl.arange(0, BLOCK_N))[None, :] * stride_bn
+    c_offset = c_ptr + (BLOCK_M * pid_m + tl.arange(0, BLOCK_M))[:, None] * stride_cm + (BLOCK_N * pid_n + tl.arange(0, BLOCK_N))[None, :] * stride_cn
     tl.store(c_offset, acc)
 
 
