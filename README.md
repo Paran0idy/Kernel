@@ -34,6 +34,8 @@
 ### HGEMM
 ✅ Block Tiling
 
+![HGEMM](./matmul-performance.png)
+
 ### GEMV
 
 ### Reduce
