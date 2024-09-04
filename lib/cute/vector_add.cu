@@ -1,16 +1,14 @@
 #include <cuda.h>
 #include <stdlib.h>
 #include <cute/tensor.hpp>
+using namespace cute;
 
 // z = ax + by + c
 template <int kNumElemPerThread = 8>
-__global__ void vector_add_v0(half *z, half *x, half *y, int num, const half a, const half b, const half c)
-{
-    using namespace cute;
+__global__ void vector_add_v0(half *z, half *x, half *y, int num, const half a, const half b, const half c) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     int offset = tid * kNumElemPerThread;
-    if (tid > num / kNumElemPerThread)
-    {
+    if (tid > num / kNumElemPerThread) {
         return;
     }
     half2 a2 = {a, a};
@@ -32,12 +30,9 @@ __global__ void vector_add_v0(half *z, half *x, half *y, int num, const half a, 
 
 // z = ax + by + c
 template <int kNumElemPerThread = 8>
-__global__ void vector_add_v1(half *z, half *x, half *y, int num, const half a, const half b, const half c)
-{
-    using namespace cute;
+__global__ void vector_add_v1(half *z, half *x, half *y, int num, const half a, const half b, const half c) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    if (tid > num / kNumElemPerThread)
-    {
+    if (tid > num / kNumElemPerThread) {
         return;
     }
 
@@ -58,8 +53,7 @@ __global__ void vector_add_v1(half *z, half *x, half *y, int num, const half a, 
     cute::copy(tYg, tYr);
 
 #pragma unroll
-    for (int i = 0; i < size(tXr); i++)
-    {
+    for (int i = 0; i < size(tXr); i++) {
         tZr(i) = a * tXr(i) + (b * tYr(i) + c);
     }
     // STG.128
@@ -68,14 +62,9 @@ __global__ void vector_add_v1(half *z, half *x, half *y, int num, const half a, 
 
 // z = ax + by + c
 template <int kNumElemPerThread = 8>
-__global__ void vector_add_v2(
-    half *z, const half *x, const half *y, int num, const half a, const half b, const half c)
-{
-    using namespace cute;
-
+__global__ void vector_add_v2(half *z, half *x, half *y, int num, const half a, const half b, const half c) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx >= num / kNumElemPerThread)
-    {
+    if (idx >= num / kNumElemPerThread) {
         return;
     }
 
@@ -104,9 +93,8 @@ __global__ void vector_add_v2(
     auto tyR2 = recast<half2>(tyR);
 
 #pragma unroll
-    for (int i = 0; i < size(tzR2); ++i)
-    {
-        // two hfma2 instruction
+    for (int i = 0; i < size(tzR2); ++i) {
+        // two hfma2 instruction for SIMD
         tzR2(i) = txR2(i) * a2 + (tyR2(i) * b2 + c2);
     }
 
@@ -115,8 +103,7 @@ __global__ void vector_add_v2(
     copy(tzRx, tzr);
 }
 
-int main()
-{
+int main() {
     const int numElementPerThread = 8;
     const half a = 2.0;
     const half b = 1.0;
@@ -131,8 +118,7 @@ int main()
     half *cx = (half *)malloc(size * sizeof(half));
     half *cy = (half *)malloc(size * sizeof(half));
     half *cz = (half *)malloc(size * sizeof(half));
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         cx[i] = 1;
         cy[i] = 1;
         cz[i] = 0;
@@ -147,36 +133,34 @@ int main()
     cudaMemcpy(gy, cy, size * sizeof(half), cudaMemcpyHostToDevice);
     cudaMemcpy(gz, cz, size * sizeof(half), cudaMemcpyHostToDevice);
 
-    int block_size = 1024;
-    int grid = size / (block_size * numElementPerThread);
+    int block = 1024;
+    int grid = size / (block * numElementPerThread);
+    int loop = 100;
 
     cudaEventRecord(start);
-    for (int i = 0; i < 100; i++)
-    {
-        vector_add_v0<numElementPerThread><<<grid, block_size>>>(gz, gx, gy, size, a, b, c);
+    for (int i = 0; i < loop; i++) {
+        vector_add_v0<numElementPerThread><<<grid, block>>>(gz, gx, gy, size, a, b, c);
     }
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     cudaEventElapsedTime(&elapsedTime, start, end);
-    std::cout << "vector_add_v0 took " << elapsedTime / 100 << "ms." << std::endl;
+    std::cout << "vector_add_v0 took " << elapsedTime / loop << "ms." << std::endl;
 
     cudaEventRecord(start);
-    for (int i = 0; i < 100; i++)
-    {
-        vector_add_v1<numElementPerThread><<<grid, block_size>>>(gz, gx, gy, size, a, b, c);
+    for (int i = 0; i < loop; i++) {
+        vector_add_v1<numElementPerThread><<<grid, block>>>(gz, gx, gy, size, a, b, c);
     }
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     cudaEventElapsedTime(&elapsedTime, start, end);
-    std::cout << "vector_add_v1 took " << elapsedTime / 100 << "ms." << std::endl;
+    std::cout << "vector_add_v1 took " << elapsedTime / loop << "ms." << std::endl;
 
     cudaEventRecord(start);
-    for (int i = 0; i < 100; i++)
-    {
-        vector_add_v2<numElementPerThread><<<grid, block_size>>>(gz, gx, gy, size, a, b, c);
+    for (int i = 0; i < loop; i++){
+        vector_add_v2<numElementPerThread><<<grid, block>>>(gz, gx, gy, size, a, b, c);
     }
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     cudaEventElapsedTime(&elapsedTime, start, end);
-    std::cout << "vector_add_v2 took " << elapsedTime / 100 << "ms." << std::endl;
+    std::cout << "vector_add_v2 took " << elapsedTime / loop << "ms." << std::endl;
 }
