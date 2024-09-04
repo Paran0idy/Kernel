@@ -1,39 +1,28 @@
 cmake_minimum_required(VERSION 3.16)
-project(sgemm)
+project(Kernel)
 
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-enable_language(CUDA) # Enable CUDA support, set this to your CUDA standard if needed.
-set(CMAKE_CUDA_ARCHITECTURES 86)
+enable_language(CUDA)
+set(CMAKE_CUDA_ARCHITECTURES 80)
 
-set(INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include)
+set(INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/3rd/cutlass/include)
+
 set(LIB_DIRS ${PROJECT_SOURCE_DIR}/lib)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include_directories(${INCLUDE_DIRS})
+# find all .cu
+file(GLOB_RECURSE CC_FILES ${LIB_DIRS}/*.cu)
 
-option(sgemm "Build sgemm executable" ON)
-option(softmax "Build softmax executable" ON)
-option(sort "Build sort exectable" ON)
-option(sgemv "Build sgemv exectable" ON)
-
-if (sgemm)
-    add_executable(sgemm ${LIB_DIRS}/sgemm.cu)
-    target_link_libraries(sgemm cublas)
-endif ()
-
-if (softmax)
-    add_executable(softmax ${LIB_DIRS}/softmax.cu)
-    target_link_libraries(softmax)
-endif ()
-
-if (sort)
-    add_executable(sort ${LIB_DIRS}/sort.cu)
-    target_link_libraries(sort)
-endif ()
-
-if (sgemv)
-    add_executable(sgemv ${LIB_DIRS}/sgemv.cu)
-    target_link_libraries(sgemv)
-endif ()
+foreach(CU_FILE ${CC_FILES})
+    get_filename_component(EXE_NAME ${CU_FILE} NAME_WE)
+    add_executable(${EXE_NAME} ${CU_FILE})
+    set_target_properties(${EXE_NAME} PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+    )
+    target_compile_options(${EXE_NAME} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr -std=c++17 -O2 -arch=sm_80>
+    )
+    target_include_directories(${EXE_NAME} PRIVATE ${INCLUDE_DIRS})
+endforeach()
