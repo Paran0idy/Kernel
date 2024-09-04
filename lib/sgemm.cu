@@ -52,12 +52,6 @@ void naive(int M, int N, int K) {
     cudaEventElapsedTime(&milliseconds, start, stop);
     double flops = 2.0 * M * N * K / (milliseconds / 1000.0);
 
-    for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++)
-            std::cout << c[OFFSET(i, j, N)] << " ";
-        std::cout << std::endl;
-    }
-
     // Save to file
     std::ofstream file;
     file.open("../performance.txt", std::ios::app);
@@ -160,12 +154,6 @@ void threadTiling(int M, int N, int K) {
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     double flops = 2.0 * M * N * K / (milliseconds / 1000.0);
-
-    for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++)
-            std::cout << c[OFFSET(i, j, N)] << " ";
-        std::cout << std::endl;
-    }
 
     // Save to file
     std::ofstream file;
@@ -271,12 +259,6 @@ void threadTilingBankFree(int M, int N, int K) {
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     double flops = 2.0 * M * N * K / (milliseconds / 1000.0);
-
-    for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++)
-            std::cout << c[OFFSET(i, j, N)] << " ";
-        std::cout << std::endl;
-    }
 
     // Save to file
     std::ofstream file;
