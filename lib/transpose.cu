@@ -1,31 +1,30 @@
 #include "kernel.h"
 
+const int BLOCK_SIZE = 32;
+
 // native
 
 __global__ void transpose_native(float* input, float* output, int M, int N) {
     int col = blockDim.x * blockIdx.x + threadIdx.x;
     int row = blockDim.y * blockIdx.y + threadIdx.y;
 
-    if (row < M && col < N) {
+    if (col < N && row < M) {
         output[col * M + row] = input[row * N + col];
     }
 }
 
 // memory coalescing
 __global__ void transpose_mc(float* input, float* output, int M, int N) {
-    const int BM = 16;
-    const int BN = 16;
-
     const int bx = blockIdx.x;
     const int by = blockIdx.y;
     const int tx = threadIdx.x;
     const int ty = threadIdx.y;
 
-    __shared__ float tile[BM][BN];
+    __shared__ float tile[BLOCK_SIZE][BLOCK_SIZE];
 
     // g2s
-    int row = by * BM + ty;
-    int col = bx * BN + tx;
+    int row = by * BLOCK_SIZE + ty;
+    int col = bx * BLOCK_SIZE + tx;
     if (row < M && col < N) {
         tile[ty][tx] = input[row * N + col];
     }
@@ -33,28 +32,25 @@ __global__ void transpose_mc(float* input, float* output, int M, int N) {
     __syncthreads();
 
     // write back to global memory, do transpose
-    col = bx * BN + tx;
-    row = by * BM + ty;
-    if (row < M && col < N) {
+    row = bx * BLOCK_SIZE + ty;
+    col = by * BLOCK_SIZE + tx;
+    if (row < N && col < M) {
         output[row * M + col] = tile[tx][ty];
     }
 }
 
 // memory coalescing wtih bank free
 __global__ void transpose_mc_bank_free(float* input, float* output, int M, int N) {
-    const int BM = 16;
-    const int BN = 16;
-
     const int bx = blockIdx.x;
     const int by = blockIdx.y;
     const int tx = threadIdx.x;
     const int ty = threadIdx.y;
 
-    __shared__ float tile[BM][BN+1];
+    __shared__ float tile[BLOCK_SIZE][BLOCK_SIZE+1];
 
     // g2s
-    int row = by * BM + ty;
-    int col = bx * BN + tx;
+    int row = by * BLOCK_SIZE + ty;
+    int col = bx * BLOCK_SIZE + tx;
     if (row < M && col < N) {
         tile[ty][tx] = input[row * N + col];
     }
@@ -62,14 +58,12 @@ __global__ void transpose_mc_bank_free(float* input, float* output, int M, int N
     __syncthreads();
 
     // write back to global memory, do transpose
-    col = bx * BN + tx;
-    row = by * BM + ty;
-    if (row < M && col < N) {
+    row = bx * BLOCK_SIZE + ty;
+    col = by * BLOCK_SIZE + tx;
+    if (row < N && col < M) {
         output[row * M + col] = tile[tx][ty];
     }
 }
-
-
 
 template<const int M, const int N, void (*F)(float*, float*, int, int)>
 void call_kernel() {
@@ -88,8 +82,8 @@ void call_kernel() {
 
     cudaMemcpy(d_input, input, M * N * sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 block(16, 16);
-    dim3 grid((M + block.x - 1) / block.x, (N + block.y - 1) / block.y);
+    dim3 block(BLOCK_SIZE, BLOCK_SIZE);
+    dim3 grid(CeilDiv(N, BLOCK_SIZE), CeilDiv(M, BLOCK_SIZE));
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -129,10 +123,9 @@ void call_kernel() {
 
 
 int main() {
-
-    call_kernel<20000, 15000, transpose_native>();
-    call_kernel<20000, 15000, transpose_mc>();
-    call_kernel<20000, 15000, transpose_mc_bank_free>();
+    call_kernel<56, 15, transpose_native>();
+    call_kernel<56, 15, transpose_mc>();
+    call_kernel<56, 15, transpose_mc_bank_free>();
 
     return 0;
 }
